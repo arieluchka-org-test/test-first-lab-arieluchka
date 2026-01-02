@@ -1,0 +1,398 @@
+name: Autograding Tests
+'on':
+  - push
+  - repository_dispatch
+
+permissions:
+  checks: write
+  actions: read
+  contents: read
+
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Note: Replace 'YOUR-USERNAME/labs-autograding-tests' with your actual GitHub repository
+    # For now, using inline bash/python scripts to demonstrate functionality
+
+    # Exercise 1: Simple Pass Test (10 points)
+    - name: Exercise 1 - Simple Pass
+      id: exercise_1
+      run: |
+        TEST_NAME="Exercise 1 - Simple Pass Test"
+        MAX_SCORE=10
+        FILE_PATH="exercise1.txt"
+        
+        if [ ! -f "$FILE_PATH" ]; then
+          RESULT='{"version":1,"status":"fail","max_score":'$MAX_SCORE',"tests":[{"name":"'$TEST_NAME'","status":"fail","score":0,"message":"File not found: '$FILE_PATH'"}]}'
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        CONTENT=$(cat "$FILE_PATH" | tr -d '\n\r' | xargs)
+        
+        if [ "$CONTENT" = "PASS" ]; then
+          RESULT='{"version":1,"status":"pass","max_score":'$MAX_SCORE',"tests":[{"name":"'$TEST_NAME'","status":"pass","score":'$MAX_SCORE',"message":"✓ Perfect! File contains the expected content."}]}'
+        else
+          RESULT='{"version":1,"status":"fail","max_score":'$MAX_SCORE',"tests":[{"name":"'$TEST_NAME'","status":"fail","score":0,"message":"✗ Expected PASS but got: '$CONTENT'"}]}'
+        fi
+        
+        echo "result=$RESULT" >> $GITHUB_OUTPUT
+
+    # Exercise 2: Partial Credit Test (20 points)
+    - name: Exercise 2 - Partial Credit
+      id: exercise_2
+      run: |
+        python3 << 'EOF'
+        import os
+        import json
+        
+        test_name = "Exercise 2 - Multiple Questions"
+        max_score = 20
+        file_path = "exercise2.txt"
+        
+        expected_answers = {
+            "Q1": "42",
+            "Q2": "GitHub",
+            "Q3": "Python",
+            "Q4": "Actions"
+        }
+        
+        points_per_question = max_score // len(expected_answers)
+        score = 0
+        tests = []
+        
+        try:
+            if not os.path.exists(file_path):
+                result = {
+                    "version": 1,
+                    "status": "fail",
+                    "max_score": max_score,
+                    "tests": [{
+                        "name": test_name,
+                        "status": "fail",
+                        "score": 0,
+                        "message": f"File not found: {file_path}"
+                    }]
+                }
+            else:
+                with open(file_path, 'r') as f:
+                    content = f.read()
+                
+                for question, expected in expected_answers.items():
+                    if f"{question}: {expected}" in content or f"{question}:{expected}" in content:
+                        score += points_per_question
+                        tests.append({
+                            "name": f"{question}",
+                            "status": "pass",
+                            "score": points_per_question,
+                            "message": f"✓ Correct answer: {expected}"
+                        })
+                    else:
+                        tests.append({
+                            "name": f"{question}",
+                            "status": "fail",
+                            "score": 0,
+                            "message": f"✗ Incorrect or missing (expected: {expected})"
+                        })
+                
+                status = "pass" if score == max_score else "fail"
+                result = {
+                    "version": 1,
+                    "status": status,
+                    "max_score": max_score,
+                    "tests": tests
+                }
+        
+        except Exception as e:
+            result = {
+                "version": 1,
+                "status": "error",
+                "max_score": max_score,
+                "tests": [{
+                    "name": test_name,
+                    "status": "error",
+                    "score": 0,
+                    "message": f"Error: {str(e)}"
+                }]
+            }
+        
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"result={json.dumps(result)}\n")
+        EOF
+
+    # Exercise 3: Python Function Test (15 points)
+    - name: Exercise 3 - Python Functions
+      id: exercise_3
+      run: |
+        python3 << 'EOF'
+        import os
+        import sys
+        import json
+        import importlib.util
+        
+        test_name = "Exercise 3 - Calculator Functions"
+        max_score = 15
+        file_path = "calculator.py"
+        
+        tests = []
+        score = 0
+        points_per_function = max_score // 3
+        
+        try:
+            if not os.path.exists(file_path):
+                result = {
+                    "version": 1,
+                    "status": "fail",
+                    "max_score": max_score,
+                    "tests": [{
+                        "name": test_name,
+                        "status": "fail",
+                        "score": 0,
+                        "message": f"File not found: {file_path}"
+                    }]
+                }
+            else:
+                spec = importlib.util.spec_from_file_location("calculator", file_path)
+                calculator = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(calculator)
+                
+                # Test add
+                try:
+                    if hasattr(calculator, 'add'):
+                        if calculator.add(2, 3) == 5 and calculator.add(-1, 1) == 0:
+                            score += points_per_function
+                            tests.append({"name": "add()", "status": "pass", "score": points_per_function, "message": "✓ Works correctly"})
+                        else:
+                            tests.append({"name": "add()", "status": "fail", "score": 0, "message": "✗ Incorrect results"})
+                    else:
+                        tests.append({"name": "add()", "status": "fail", "score": 0, "message": "✗ Not found"})
+                except Exception as e:
+                    tests.append({"name": "add()", "status": "error", "score": 0, "message": f"✗ Error: {str(e)}"})
+                
+                # Test subtract
+                try:
+                    if hasattr(calculator, 'subtract'):
+                        if calculator.subtract(5, 3) == 2 and calculator.subtract(0, 5) == -5:
+                            score += points_per_function
+                            tests.append({"name": "subtract()", "status": "pass", "score": points_per_function, "message": "✓ Works correctly"})
+                        else:
+                            tests.append({"name": "subtract()", "status": "fail", "score": 0, "message": "✗ Incorrect results"})
+                    else:
+                        tests.append({"name": "subtract()", "status": "fail", "score": 0, "message": "✗ Not found"})
+                except Exception as e:
+                    tests.append({"name": "subtract()", "status": "error", "score": 0, "message": f"✗ Error: {str(e)}"})
+                
+                # Test multiply
+                try:
+                    if hasattr(calculator, 'multiply'):
+                        if calculator.multiply(3, 4) == 12 and calculator.multiply(-2, 5) == -10:
+                            score += points_per_function
+                            tests.append({"name": "multiply()", "status": "pass", "score": points_per_function, "message": "✓ Works correctly"})
+                        else:
+                            tests.append({"name": "multiply()", "status": "fail", "score": 0, "message": "✗ Incorrect results"})
+                    else:
+                        tests.append({"name": "multiply()", "status": "fail", "score": 0, "message": "✗ Not found"})
+                except Exception as e:
+                    tests.append({"name": "multiply()", "status": "error", "score": 0, "message": f"✗ Error: {str(e)}"})
+                
+                status = "pass" if score == max_score else ("error" if any(t["status"] == "error" for t in tests) else "fail")
+                result = {"version": 1, "status": status, "max_score": max_score, "tests": tests}
+        
+        except Exception as e:
+            result = {
+                "version": 1,
+                "status": "error",
+                "max_score": max_score,
+                "tests": [{"name": test_name, "status": "error", "score": 0, "message": f"Error: {str(e)}"}]
+            }
+        
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"result={json.dumps(result)}\n")
+        EOF
+
+    # Exercise 4: Timeout Test (5 points)
+    - name: Exercise 4 - Quick Test
+      id: exercise_4
+      run: |
+        TEST_NAME="Exercise 4 - Timeout Test"
+        MAX_SCORE=5
+        FILE_PATH="exercise4.txt"
+        
+        if [ ! -f "$FILE_PATH" ]; then
+          RESULT='{"version":1,"status":"fail","max_score":'$MAX_SCORE',"tests":[{"name":"'$TEST_NAME'","status":"fail","score":0,"message":"File not found"}]}'
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        CONTENT=$(cat "$FILE_PATH" | tr -d '\n\r' | xargs)
+        
+        if [ "$CONTENT" = "QUICK" ]; then
+          RESULT='{"version":1,"status":"pass","max_score":'$MAX_SCORE',"tests":[{"name":"'$TEST_NAME'","status":"pass","score":'$MAX_SCORE',"message":"✓ Quick test passed!","execution_time":"0.1s"}]}'
+        else
+          RESULT='{"version":1,"status":"fail","max_score":'$MAX_SCORE',"tests":[{"name":"'$TEST_NAME'","status":"fail","score":0,"message":"✗ Expected QUICK but got: '$CONTENT'"}]}'
+        fi
+        
+        echo "result=$RESULT" >> $GITHUB_OUTPUT
+
+    # Exercise 5: JSON Validation (10 points)
+    - name: Exercise 5 - JSON Validation
+      id: exercise_5
+      run: |
+        python3 << 'EOF'
+        import os
+        import json
+        
+        test_name = "Exercise 5 - JSON Validator"
+        max_score = 10
+        file_path = "exercise5.txt"
+        
+        try:
+            if not os.path.exists(file_path):
+                result = {
+                    "version": 1,
+                    "status": "fail",
+                    "max_score": max_score,
+                    "tests": [{"name": test_name, "status": "fail", "score": 0, "message": f"File not found: {file_path}"}]
+                }
+            else:
+                try:
+                    with open(file_path, 'r') as f:
+                        data = json.load(f)
+                    
+                    if "status" in data and data["status"] == "success":
+                        result = {
+                            "version": 1,
+                            "status": "pass",
+                            "max_score": max_score,
+                            "tests": [{"name": test_name, "status": "pass", "score": max_score, "message": "✓ Valid JSON with correct status"}]
+                        }
+                    else:
+                        result = {
+                            "version": 1,
+                            "status": "fail",
+                            "max_score": max_score,
+                            "tests": [{"name": test_name, "status": "fail", "score": 0, "message": "✗ Missing or incorrect 'status' field"}]
+                        }
+                
+                except json.JSONDecodeError as e:
+                    result = {
+                        "version": 1,
+                        "status": "error",
+                        "max_score": max_score,
+                        "tests": [{"name": test_name, "status": "error", "score": 0, "message": f"✗ Invalid JSON: {str(e)}"}]
+                    }
+        
+        except Exception as e:
+            result = {
+                "version": 1,
+                "status": "error",
+                "max_score": max_score,
+                "tests": [{"name": test_name, "status": "error", "score": 0, "message": f"Error: {str(e)}"}]
+            }
+        
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"result={json.dumps(result)}\n")
+        EOF
+
+    # Exercise 6: Rubric-Based Grading (30 points)
+    - name: Exercise 6 - Complex Rubric
+      id: exercise_6
+      run: |
+        python3 << 'EOF'
+        import os
+        import json
+        
+        test_name = "Exercise 6 - Rubric Grading"
+        max_score = 30
+        file_path = "exercise6.txt"
+        
+        score = 0
+        tests = []
+        points_per_criterion = max_score // 3
+        
+        try:
+            if not os.path.exists(file_path):
+                result = {
+                    "version": 1,
+                    "status": "fail",
+                    "max_score": max_score,
+                    "tests": [{"name": test_name, "status": "fail", "score": 0, "message": f"File not found: {file_path}"}]
+                }
+            else:
+                with open(file_path, 'r') as f:
+                    content = f.read()
+                
+                # NAME criterion
+                if "NAME:" in content:
+                    name_line = [line for line in content.split('\n') if line.startswith("NAME:")][0]
+                    if len(name_line.split("NAME:")[1].strip()) > 0:
+                        score += points_per_criterion
+                        tests.append({"name": "NAME Present", "status": "pass", "score": points_per_criterion, "message": f"✓ NAME found ({points_per_criterion} pts)"})
+                    else:
+                        tests.append({"name": "NAME Present", "status": "fail", "score": 0, "message": "✗ NAME empty (0 pts)"})
+                else:
+                    tests.append({"name": "NAME Present", "status": "fail", "score": 0, "message": "✗ NAME not found (0 pts)"})
+                
+                # CODE criterion
+                if "CODE:" in content:
+                    code_section = content.split("CODE:")[1].split("EXPLANATION:")[0] if "EXPLANATION:" in content else content.split("CODE:")[1]
+                    code_content = code_section.strip()
+                    
+                    if len(code_content) >= 10:
+                        score += points_per_criterion
+                        tests.append({"name": "CODE Section", "status": "pass", "score": points_per_criterion, "message": f"✓ CODE has content ({points_per_criterion} pts)"})
+                    else:
+                        partial = points_per_criterion // 2
+                        score += partial
+                        tests.append({"name": "CODE Section", "status": "fail", "score": partial, "message": f"⚠ CODE too short ({partial} pts)"})
+                else:
+                    tests.append({"name": "CODE Section", "status": "fail", "score": 0, "message": "✗ CODE not found (0 pts)"})
+                
+                # EXPLANATION criterion
+                if "EXPLANATION:" in content:
+                    explanation = content.split("EXPLANATION:")[1].strip()
+                    
+                    if len(explanation) >= 50:
+                        score += points_per_criterion
+                        tests.append({"name": "EXPLANATION", "status": "pass", "score": points_per_criterion, "message": f"✓ {len(explanation)} chars ≥50 ({points_per_criterion} pts)"})
+                    elif len(explanation) >= 20:
+                        partial = points_per_criterion // 2
+                        score += partial
+                        tests.append({"name": "EXPLANATION", "status": "fail", "score": partial, "message": f"⚠ {len(explanation)} chars <50 ({partial} pts)"})
+                    else:
+                        tests.append({"name": "EXPLANATION", "status": "fail", "score": 0, "message": f"✗ Too short: {len(explanation)} chars (0 pts)"})
+                else:
+                    tests.append({"name": "EXPLANATION", "status": "fail", "score": 0, "message": "✗ EXPLANATION not found (0 pts)"})
+                
+                status = "pass" if score == max_score else "fail"
+                result = {"version": 1, "status": status, "max_score": max_score, "tests": tests}
+        
+        except Exception as e:
+            result = {
+                "version": 1,
+                "status": "error",
+                "max_score": max_score,
+                "tests": [{"name": test_name, "status": "error", "score": 0, "message": f"Error: {str(e)}"}]
+            }
+        
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"result={json.dumps(result)}\n")
+        EOF
+
+    # Autograding Reporter
+    - name: Autograding Reporter
+      uses: education/autograding-grading-reporter@v1
+      env:
+        EXERCISE_1_RESULTS: "${{steps.exercise_1.outputs.result}}"
+        EXERCISE_2_RESULTS: "${{steps.exercise_2.outputs.result}}"
+        EXERCISE_3_RESULTS: "${{steps.exercise_3.outputs.result}}"
+        EXERCISE_4_RESULTS: "${{steps.exercise_4.outputs.result}}"
+        EXERCISE_5_RESULTS: "${{steps.exercise_5.outputs.result}}"
+        EXERCISE_6_RESULTS: "${{steps.exercise_6.outputs.result}}"
+      with:
+        runners: exercise_1,exercise_2,exercise_3,exercise_4,exercise_5,exercise_6
