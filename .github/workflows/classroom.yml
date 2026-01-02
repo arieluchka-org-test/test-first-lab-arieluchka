@@ -21,7 +21,7 @@ jobs:
 
     # Exercise 1: Simple Pass Test (10 points)
     - name: Exercise 1 - Simple Pass
-      id: exercise_1
+      id: exercise1
       run: |
         TEST_NAME="Exercise 1 - Simple Pass Test"
         MAX_SCORE=10
@@ -45,7 +45,7 @@ jobs:
 
     # Exercise 2: Partial Credit Test (20 points)
     - name: Exercise 2 - Partial Credit
-      id: exercise_2
+      id: exercise2
       run: |
         python3 << 'EOF'
         import os
@@ -127,7 +127,7 @@ jobs:
 
     # Exercise 3: Python Function Test (15 points)
     - name: Exercise 3 - Python Functions
-      id: exercise_3
+      id: exercise3
       run: |
         python3 << 'EOF'
         import os
@@ -217,7 +217,7 @@ jobs:
 
     # Exercise 4: Timeout Test (5 points)
     - name: Exercise 4 - Quick Test
-      id: exercise_4
+      id: exercise4
       run: |
         TEST_NAME="Exercise 4 - Timeout Test"
         MAX_SCORE=5
@@ -241,7 +241,7 @@ jobs:
 
     # Exercise 5: JSON Validation (10 points)
     - name: Exercise 5 - JSON Validation
-      id: exercise_5
+      id: exercise5
       run: |
         python3 << 'EOF'
         import os
@@ -301,7 +301,7 @@ jobs:
 
     # Exercise 6: Rubric-Based Grading (30 points)
     - name: Exercise 6 - Complex Rubric
-      id: exercise_6
+      id: exercise6
       run: |
         python3 << 'EOF'
         import os
@@ -388,11 +388,11 @@ jobs:
     - name: Autograding Reporter
       uses: education/autograding-grading-reporter@v1
       env:
-        EXERCISE_1_RESULTS: "${{steps.exercise_1.outputs.result}}"
-        EXERCISE_2_RESULTS: "${{steps.exercise_2.outputs.result}}"
-        EXERCISE_3_RESULTS: "${{steps.exercise_3.outputs.result}}"
-        EXERCISE_4_RESULTS: "${{steps.exercise_4.outputs.result}}"
-        EXERCISE_5_RESULTS: "${{steps.exercise_5.outputs.result}}"
-        EXERCISE_6_RESULTS: "${{steps.exercise_6.outputs.result}}"
+        EXERCISE1_RESULTS: "${{steps.exercise1.outputs.result}}"
+        EXERCISE2_RESULTS: "${{steps.exercise2.outputs.result}}"
+        EXERCISE3_RESULTS: "${{steps.exercise3.outputs.result}}"
+        EXERCISE4_RESULTS: "${{steps.exercise4.outputs.result}}"
+        EXERCISE5_RESULTS: "${{steps.exercise5.outputs.result}}"
+        EXERCISE6_RESULTS: "${{steps.exercise6.outputs.result}}"
       with:
-        runners: exercise_1,exercise_2,exercise_3,exercise_4,exercise_5,exercise_6
+        runners: exercise1,exercise2,exercise3,exercise4,exercise5,exercise6
